@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>RFR Fleet Analytics | OSTOOL Transport</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+        }
+        body {
+            background: #0a0f1a;
+            margin: 0;
+            padding: 24px 20px;
+            color: #eef2ff;
+        }
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #07161f, #0a2a3b);
+            color: #f0f9ff;
+            padding: 16px 28px;
+            border-radius: 32px;
+            margin-bottom: 28px;
+            border: 1px solid #1e3a4d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .header-title h1 {
+            margin: 0 0 6px;
+            font-weight: 600;
+            font-size: 1.8rem;
+        }
+        .header-title p {
+            margin: 0;
+            opacity: 0.85;
+            font-size: 0.85rem;
+        }
+
+        .upload-area {
+            background: #111827;
+            border-radius: 28px;
+            padding: 18px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            border: 1px solid #283548;
+        }
+        .file-label {
+            background: #1f6392;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-label:hover {
+            background: #2d7cb0;
+        }
+        #file-input {
+            display: none;
+        }
+        .stats-badge {
+            background: #1e2a3a;
+            border-radius: 30px;
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            color: #cbd5e6;
+        }
+        .theme-toggle-btn {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .theme-toggle-btn:hover {
+            background: #4a5568;
+        }
+
+        .export-buttons-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-left: auto;
+        }
+        .export-btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            transition: background-color 0.2s;
+        }
+        .export-btn.excel-btn {
+            background: #1a6b3c;
+        }
+        .export-btn.excel-btn:hover {
+            background: #248f4f;
+        }
+
+        .filter-panel {
+            background: #111827;
+            border-radius: 28px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-end;
+            border: 1px solid #283548;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 110px;
+        }
+        .filter-group label {
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+        }
+        select,
+        input {
+            padding: 10px 12px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        select:focus,
+        input:focus {
+            border-color: #2d7cb0;
+            box-shadow: 0 0 0 2px rgba(45, 124, 176, 0.3);
+        }
+        button {
+            background: #1f6392;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 30px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2d7cb0;
+        }
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .insight-card {
+            background: #111827;
+            border-radius: 28px;
+            padding: 18px 20px;
+            border: 1px solid #283548;
+        }
+        .insight-card h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #b9d0f0;
+            border-left: 4px solid #3b9b6e;
+            padding-left: 12px;
+        }
+        .insight-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #f0f9ff;
+        }
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .chart-card {
+            background: #111827;
+            border-radius: 28px;
+            padding: 16px 20px;
+            flex: 1;
+            min-width: 280px;
+            border: 1px solid #283548;
+        }
+        .chart-card h3 {
+            color: #b9d0f0;
+            margin-top: 0;
+        }
+
+        .analysis-summary-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .analysis-card {
+            flex: 1;
+            background: #111827;
+            border-radius: 28px;
+            padding: 20px 24px;
+            border: 1px solid #283548;
+            transition: all 0.2s;
+        }
+        .analysis-card h3 {
+            margin: 0 0 14px 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #b9d0f0;
+            border-left: 4px solid #f59e0b;
+            padding-left: 14px;
+        }
+        .analysis-card p {
+            margin: 0;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+        .analysis-card strong {
+            color: #facc15;
+            font-weight: 700;
+        }
+
+        .table-wrapper {
+            background: #111827;
+            border-radius: 28px;
+            overflow-x: auto;
+            border: 1px solid #283548;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+        }
+        th {
+            background: #0f172a;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #b9d0f0;
+            border-bottom: 1px solid #283548;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #1e2a3a;
+        }
+        tr:hover {
+            background: #1a2538;
+        }
+        .pagination {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 16px 20px;
+            align-items: center;
+            color: #cbd5e6;
+        }
+        .badge-severity {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .severity-High {
+            background: #7f1a1a;
+            color: #ffb3b3;
+        }
+        .severity-Urgent {
+            background: #9b2c1d;
+            color: #ffc4b3;
+        }
+        .severity-Normal {
+            background: #1e3b5a;
+            color: #b9e0ff;
+        }
+        .severity-Low {
+            background: #14532d;
+            color: #bbf7d0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            padding: 16px 8px;
+            border-top: 1px solid #1e2a3a;
+        }
+
+        body.light-theme {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        body.light-theme .header {
+            background: linear-gradient(135deg, #d9e2ef, #b9c9dd);
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+        body.light-theme .upload-area,
+        body.light-theme .filter-panel,
+        body.light-theme .insight-card,
+        body.light-theme .chart-card,
+        body.light-theme .table-wrapper,
+        body.light-theme .analysis-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+        body.light-theme .stats-badge {
+            background: #eef2ff;
+            color: #1e3a5f;
+        }
+        body.light-theme .theme-toggle-btn {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        body.light-theme select,
+        body.light-theme input {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        body.light-theme th {
+            background: #f8fafc;
+            color: #000000;
+            border-bottom-color: #cbd5e1;
+            font-weight: 700;
+        }
+        body.light-theme td {
+            color: #000000;
+            border-bottom-color: #e2e8f0;
+        }
+        body.light-theme tr:hover {
+            background: #f1f5f9;
+        }
+        body.light-theme .pagination {
+            color: #000000;
+        }
+        body.light-theme .insight-card h3 {
+            color: #000000 !important;
+            border-left-color: #3b9b6e;
+        }
+        body.light-theme .chart-card h3 {
+            color: #000000 !important;
+        }
+        body.light-theme .insight-value {
+            color: #0b2b3b;
+        }
+        body.light-theme .analysis-card h3 {
+            color: #0f172a !important;
+            border-left-color: #e67e22;
+        }
+        body.light-theme .analysis-card p {
+            color: #1e293b;
+        }
+        body.light-theme .analysis-card strong {
+            color: #c2410c;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 16px;
+            }
+            .filter-group {
+                width: 100%;
+            }
+            .analysis-summary-wrapper {
+                flex-direction: column;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .export-buttons-group {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="header-title">
+                <h1><i class="fas fa-truck-moving"></i> Fleet Analytics Dashboard</h1>
+                <p>OSTOOL Transport | Maintenance Department</p>
+            </div>
+            <button id="theme-toggle" class="theme-toggle-btn"><i class="fas fa-moon"></i> Dark</button>
+        </div>
+
+        <div class="upload-area">
+            <label class="file-label" for="file-input"><i class="fas fa-upload"></i> Upload RFR Table.xlsx</label>
+            <input type="file" id="file-input" accept=".xlsx, .xls, .csv" />
+            <div class="stats-badge" id="data-status"><i class="fas fa-info-circle"></i> Loading data...</div>
+            <div class="export-buttons-group" id="export-buttons">
+                <button class="export-btn excel-btn" id="export-excel-btn" title="Export filtered data to Excel">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-panel" id="filter-panel" style="display: none;">
+            <div class="filter-group"><label>YEAR</label><select id="filter-year"></select></div>
+            <div class="filter-group"><label>MONTH</label><select id="filter-month"><option value="all">All Months</option><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select></div>
+            <div class="filter-group"><label>DAY</label><select id="filter-day"><option value="all">All Days</option></select></div>
+            <div class="filter-group"><label>TRUCK CODE</label><select id="filter-truck"></select></div>
+            <div class="filter-group"><label>BRANCH / VENDOR</label><select id="filter-branch"></select></div>
+            <div class="filter-group"><label>MAINTENANCE CENTER</label><select id="filter-maint-center"></select></div>
+            <div class="filter-group"><label>PROBLEM CATEGORY</label><select id="filter-category"></select></div>
+            <div class="filter-group"><label>SEVERITY</label><select id="filter-severity"></select></div>
+            <div class="filter-group"><label>CATEGORY (TYPE)</label><select id="filter-category-type"><option value="all">All Types</option><option value="Bodyworks">Bodyworks</option><option value="Electrical">Electrical</option><option value="Fault Diagnosis">Fault Diagnosis</option><option value="Inspections">Inspections</option><option value="Insurance">Insurance</option><option value="Lubrication & washing">Lubrication &amp; washing</option><option value="Mechanical">Mechanical</option><option value="Silo">Silo</option><option value="Suspension">Suspension</option><option value="Tires">Tires</option><option value="Trailer Cover">Trailer Cover</option></select></div>
+            <button id="reset-filters"><i class="fas fa-undo-alt"></i> Reset</button>
+        </div>
+
+        <div class="insights-grid" id="insights-area" style="display: none;">
+            <div class="insight-card"><h3>Total RFR Requests</h3><div class="insight-value" id="total-rfr">—</div></div>
+            <div class="insight-card"><h3>Total WO</h3><div class="insight-value" id="total-wo">—</div></div>
+            <div class="insight-card"><h3>No. of Performed Trucks</h3><div class="insight-value" id="unique-trucks">—</div></div>
+            <div class="insight-card"><h3>Top Problem Category</h3><div class="insight-value" id="top-category">—</div></div>
+            <div class="insight-card"><h3>Urgent + High Severity</h3><div class="insight-value" id="critical-count">—</div></div>
+        </div>
+
+        <div class="chart-row" id="chart-area" style="display: none;">
+            <div class="chart-card"><h3>Issue Categories</h3><canvas id="categoryChart"></canvas></div>
+            <div class="chart-card"><h3>Severity Distribution</h3><canvas id="severityChart"></canvas></div>
+            <div class="chart-card"><h3>Monthly RFR Trend</h3><canvas id="trendChart"></canvas></div>
+        </div>
+
+        <div class="analysis-summary-wrapper" id="analysis-summary-wrapper" style="display: none;">
+            <div class="analysis-card">
+                <h3><i class="fas fa-chart-line"></i> Volume Analysis</h3>
+                <p id="volume-analysis-text">—</p>
+            </div>
+            <div class="analysis-card">
+                <h3><i class="fas fa-heartbeat"></i> Fleet Health</h3>
+                <p id="fleet-health-text">—</p>
+            </div>
+        </div>
+
+        <div class="table-wrapper" id="table-wrapper" style="display: none;">
+            <table id="data-table"><thead><tr><th>RFR Code</th><th>Creation Date (DD/MM/YYYY)</th><th>Truck Code</th><th>Problem Category</th><th>Severity</th><th>Branch/Vendor</th><th>Maintenance Center</th><th>Description</th></tr></thead><tbody id="table-body"></tbody></table>
+            <div class="pagination" id="pagination-controls"></div>
+        </div>
+        <footer>Developed By Atef Reda | Maintenance Department | All Right Reserved 2026 ©</footer>
+    </div>
+
+    <script>
+        // ==================== CONFIGURATION ====================
+        const SPREADSHEET_ID = '11yz_qWWcS8PfcFc3IZtk6P2jykxBJ9of';   // Your Google Sheet ID
+        const API_KEY = 'AIzaSyDaftZgkanJg6cBJwYYvLQwszapOIpDTUM';   // <-- PASTE YOUR KEY HERE
+
+        // ==================== ORIGINAL PROCESSING FUNCTIONS (unchanged) ====================
+        let rawData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 20;
+        let categoryChart, severityChart, trendChart;
+        let darkMode = true;
+
+        function matchesCategoryType(recordTypeValue, selectedType) {
+            if (selectedType === 'all') return true;
+            if (!recordTypeValue || recordTypeValue === '—') return false;
+            const catNorm = recordTypeValue.trim().toLowerCase();
+            const typeNorm = selectedType.trim().toLowerCase();
+            if (catNorm === typeNorm) return true;
+            if (catNorm.startsWith(typeNorm + ' ') ||
+                catNorm.startsWith(typeNorm + '-') ||
+                catNorm.startsWith(typeNorm + '(')) {
+                return true;
+            }
+            return false;
+        }
+
+        function parseDateAsMMDDYYYY(value) {
+            if (!value) return null;
+            if (typeof value === 'number') {
+                let date = new Date(Math.round((value - 25569) * 86400 * 1000));
+                if (!isNaN(date.getTime())) return date;
+            }
+            if (value instanceof Date && !isNaN(value)) return value;
+            let str = String(value).trim();
+            let parts = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+            if (parts) {
+                let month = parseInt(parts[1], 10);
+                let day = parseInt(parts[2], 10);
+                let year = parseInt(parts[3], 10);
+                if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900) {
+                    return new Date(year, month - 1, day);
+                }
+            }
+            parts = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+            if (parts) {
+                let year = parseInt(parts[1], 10);
+                let month = parseInt(parts[2], 10);
+                let day = parseInt(parts[3], 10);
+                if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    return new Date(year, month - 1, day);
+                }
+            }
+            return null;
+        }
+
+        function getDateComponents(value) {
+            let date = parseDateAsMMDDYYYY(value);
+            if (!date || isNaN(date.getTime())) return { year: null, month: null, day: null };
+            return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
+        }
+
+        function formatDateDDMMYYYY(date) {
+            if (!date || isNaN(date.getTime())) return '';
+            let d = date.getDate(),
+                m = date.getMonth() + 1,
+                y = date.getFullYear();
+            return `${d.toString().padStart(2,'0')}/${m.toString().padStart(2,'0')}/${y}`;
+        }
+
+        function processSheetData(worksheet) {
+            const json = XLSX.utils.sheet_to_json(worksheet, { defval: "", header: 1 });
+            if (!json.length || json.length < 2) return [];
+            const headers = json[0].map(h => (h !== undefined && h !== null) ? String(h).trim() : '');
+
+            let dateColIdx = -1;
+            for (let i = 0; i < headers.length; i++) {
+                if (headers[i].toLowerCase() === 'date') {
+                    dateColIdx = i;
+                    break;
+                }
+            }
+            if (dateColIdx === -1) {
+                alert('ERROR: No column named "Date" found. All date calculations depend on this column.');
+                return [];
+            }
+
+            const findCol = (kw) => { for (let i = 0; i < headers.length; i++)
+                    if (headers[i].toLowerCase().includes(kw.toLowerCase())) return i; return -1; };
+            const truckCol = findCol('truck code');
+            const problemCatCol = findCol('problem category');
+            let categoryTypeCol = -1;
+            for (let i = 0; i < headers.length; i++) {
+                let lower = headers[i].toLowerCase();
+                if (lower === 'category' || (lower.includes('category') && !lower.includes('problem'))) {
+                    categoryTypeCol = i;
+                    break;
+                }
+            }
+            const severityCol = (findCol('problem severity') !== -1) ? findCol('problem severity') : findCol('severity');
+            const rfrCol = findCol('rfr code');
+            const branchCol = (findCol('branch') !== -1) ? findCol('branch') : findCol('vendor');
+            const maintCol = findCol('maintenance center');
+            const descCol = findCol('problem description');
+
+            const records = [];
+            for (let r = 1; r < json.length; r++) {
+                const row = json[r];
+                if (!row || row.length === 0) continue;
+
+                let dateRaw = (dateColIdx < row.length) ? row[dateColIdx] : null;
+                const { year, month, day } = getDateComponents(dateRaw);
+                if (year === null) continue;
+
+                let truck = (truckCol !== -1 && truckCol < row.length) ? (row[truckCol] || '') : '';
+                let problemCat = (problemCatCol !== -1 && problemCatCol < row.length) ? (row[problemCatCol] || '') : '';
+                let categoryType = (categoryTypeCol !== -1 && categoryTypeCol < row.length) ? (row[categoryTypeCol] || '') : '';
+                let severity = (severityCol !== -1 && severityCol < row.length) ? (row[severityCol] || '') : '';
+                let rfr = (rfrCol !== -1 && rfrCol < row.length) ? (row[rfrCol] || '') : '';
+                let branch = (branchCol !== -1 && branchCol < row.length) ? (row[branchCol] || '') : '';
+                let maintCenter = (maintCol !== -1 && maintCol < row.length) ? (row[maintCol] || '') : '';
+                let descRaw = (descCol !== -1 && descCol < row.length) ? (row[descCol] || '') : '';
+                let desc = String(descRaw).substring(0, 80);
+
+                if ((!rfr || rfr === '') && (!truck || truck === '')) {
+                    const rowObj = XLSX.utils.sheet_to_json(worksheet, { defval: "", header: headers, range: r })[0];
+                    if (rowObj) {
+                        rfr = rfr || rowObj["RFR Code"] || rowObj["RFR_CODE"] || '';
+                        truck = truck || rowObj["Truck Code"] || rowObj["TRUCK_CODE"] || '';
+                        problemCat = problemCat || rowObj["Problem Category"] || '';
+                        if (!categoryType) categoryType = rowObj["Category"] || rowObj["category"] || '';
+                        severity = severity || rowObj["Problem Severity"] || rowObj["Severity"] || '';
+                        branch = branch || rowObj["Branch"] || rowObj["RFR_RAW_Copd.Branch"] || '';
+                        maintCenter = maintCenter || rowObj["Maintenance Center"] || '';
+                        desc = desc || (rowObj["Problem Description"] || '').toString().substring(0, 80);
+                    }
+                }
+
+                records.push({
+                    rfrCode: rfr || '—',
+                    creationDateObj: dateRaw ? parseDateAsMMDDYYYY(dateRaw) : null,
+                    year,
+                    month,
+                    day,
+                    truckCode: truck || '—',
+                    problemCategory: problemCat || '—',
+                    categoryType: categoryType || '—',
+                    severity: severity || '—',
+                    branch: branch || '—',
+                    maintenanceCenter: maintCenter || '—',
+                    description: desc + (desc.length >= 80 ? '...' : '')
+                });
+            }
+            return records;
+        }
+
+        function populateFilters() {
+            const years = new Set(),
+                trucks = new Set(),
+                branches = new Set(),
+                maintCenters = new Set(),
+                cats = new Set(),
+                sevs = new Set();
+            rawData.forEach(d => {
+                if (d.year) years.add(d.year);
+                if (d.truckCode && d.truckCode !== '—') trucks.add(d.truckCode);
+                if (d.branch && d.branch !== '—') branches.add(d.branch);
+                if (d.maintenanceCenter && d.maintenanceCenter !== '—') maintCenters.add(d.maintenanceCenter);
+                if (d.problemCategory && d.problemCategory !== '—') cats.add(d.problemCategory);
+                if (d.severity && d.severity !== '—') sevs.add(d.severity);
+            });
+            document.getElementById('filter-year').innerHTML = '<option value="all">All Years</option>' + Array.from(
+                years).sort().map(y => `<option value="${y}">${y}</option>`).join('');
+            document.getElementById('filter-truck').innerHTML = '<option value="all">All Trucks</option>' + Array.from(
+                trucks).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('');
+            document.getElementById('filter-branch').innerHTML = '<option value="all">All Branches</option>' + Array.from(
+                branches).sort().map(b =>
+                `<option value="${b.replace(/"/g,'&quot;')}">${b.substring(0,40)}</option>`).join('');
+            document.getElementById('filter-maint-center').innerHTML = '<option value="all">All Centers</option>' + Array
+                .from(maintCenters).sort().map(mc =>
+                    `<option value="${mc.replace(/"/g,'&quot;')}">${mc.substring(0,40)}</option>`).join('');
+            document.getElementById('filter-category').innerHTML = '<option value="all">All Categories</option>' + Array
+                .from(cats).sort().map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
+            document.getElementById('filter-severity').innerHTML = '<option value="all">All Severities</option>' + Array
+                .from(sevs).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+            let dayOpts = '<option value="all">All Days</option>';
+            for (let i = 1; i <= 31; i++) dayOpts += `<option value="${i}">${i}</option>`;
+            document.getElementById('filter-day').innerHTML = dayOpts;
+        }
+
+        function applyFilters() {
+            let year = document.getElementById('filter-year').value;
+            let month = document.getElementById('filter-month').value;
+            let day = document.getElementById('filter-day').value;
+            let truck = document.getElementById('filter-truck').value;
+            let branch = document.getElementById('filter-branch').value;
+            let maintCenter = document.getElementById('filter-maint-center').value;
+            let category = document.getElementById('filter-category').value;
+            let severity = document.getElementById('filter-severity').value;
+            let categoryType = document.getElementById('filter-category-type').value;
+
+            filteredData = rawData.filter(d => {
+                if (year !== 'all' && d.year != year) return false;
+                if (month !== 'all' && d.month != month) return false;
+                if (day !== 'all') {
+                    const selectedDay = parseInt(day, 10);
+                    if (d.day === null || d.day === undefined || d.day !== selectedDay) return false;
+                }
+                if (truck !== 'all' && d.truckCode !== truck) return false;
+                if (branch !== 'all' && d.branch !== branch) return false;
+                if (maintCenter !== 'all' && d.maintenanceCenter !== maintCenter) return false;
+                if (category !== 'all' && d.problemCategory !== category) return false;
+                if (severity !== 'all' && d.severity !== severity) return false;
+                if (!matchesCategoryType(d.categoryType, categoryType)) return false;
+                return true;
+            });
+            currentPage = 1;
+            renderTable();
+            updateChartsAndInsights();
+        }
+
+        function getChartTextColor() { return darkMode ? '#cbd5e6' : '#1e293b'; }
+
+        function getChartGridColor() { return darkMode ? '#334155' : '#e2e8f0'; }
+
+        function updateAnalysisSummary() {
+            const totalOps = filteredData.length;
+            const summaryWrapper = document.getElementById('analysis-summary-wrapper');
+            if (!totalOps) {
+                summaryWrapper.style.display = 'none';
+                return;
+            }
+            summaryWrapper.style.display = 'flex';
+            const catMap = new Map();
+            filteredData.forEach(d => { if (d.problemCategory && d.problemCategory !== '—') catMap.set(d.problemCategory, (
+                    catMap.get(d.problemCategory) || 0) + 1); });
+            let topCategory = '—',
+                topCount = 0;
+            for (let [cat, cnt] of catMap.entries())
+                if (cnt > topCount) { topCount = cnt;
+                    topCategory = cat; }
+            let percent = totalOps > 0 ? (topCount / totalOps) * 100 : 0;
+            document.getElementById('volume-analysis-text').innerHTML =
+                `The maintenance fleet handled <strong>${totalOps.toLocaleString()}</strong> service operations. The most recurring issue category is <strong>${topCategory}</strong>, representing approximately <strong>${percent.toFixed(1)}%</strong> of total operations.`;
+
+            const truckOpsMap = new Map();
+            filteredData.forEach(d => { if (d.truckCode && d.truckCode !== '—') truckOpsMap.set(d.truckCode, (truckOpsMap.get(
+                    d.truckCode) || 0) + 1); });
+            let topTruck = '—',
+                maxTruckCount = 0;
+            for (let [truck, cnt] of truckOpsMap.entries())
+                if (cnt > maxTruckCount) { maxTruckCount = cnt;
+                    topTruck = truck; }
+            let topVendorForTruck = '—',
+                maxVendorTasks = 0;
+            if (topTruck !== '—' && maxTruckCount > 0) {
+                const vendorMap = new Map();
+                filteredData.forEach(d => { if (d.truckCode === topTruck && d.branch && d.branch !== '—') vendorMap.set(d
+                        .branch, (vendorMap.get(d.branch) || 0) + 1); });
+                for (let [vendor, cnt] of vendorMap.entries())
+                    if (cnt > maxVendorTasks) { maxVendorTasks = cnt;
+                        topVendorForTruck = vendor; }
+            }
+            let fleetHealthMsg = (topTruck === '—' || maxTruckCount === 0) ?
+                `Insufficient truck data to identify high-frequency unit.` :
+                (topVendorForTruck === '—' || maxVendorTasks === 0) ?
+                `Truck <strong>${topTruck}</strong> was identified as a "High-Frequency Unit" with the most service entries (<strong>${maxTruckCount}</strong> entries). No specific vendor recorded for this unit.` :
+                `Truck <strong>${topTruck}</strong> was identified as a "High-Frequency Unit" with the most service entries (<strong>${maxTruckCount}</strong> entries). The vendor <strong>${topVendorForTruck}</strong> is handling the highest volume of these tasks (${maxVendorTasks} tasks).`;
+            document.getElementById('fleet-health-text').innerHTML = fleetHealthMsg;
+        }
+
+        function updateChartsAndInsights() {
+            if (!filteredData.length) {
+                document.getElementById('total-rfr').innerText = '0';
+                document.getElementById('total-wo').innerText = '0';
+                document.getElementById('unique-trucks').innerText = '0';
+                document.getElementById('top-category').innerText = '—';
+                document.getElementById('critical-count').innerText = '0';
+                if (categoryChart) categoryChart.destroy();
+                if (severityChart) severityChart.destroy();
+                if (trendChart) trendChart.destroy();
+                updateAnalysisSummary();
+                return;
+            }
+            const total = filteredData.length;
+            const uniqueTrucks = new Set(filteredData.map(d => d.truckCode).filter(v => v && v !== '—')).size;
+            const catCount = new Map();
+            filteredData.forEach(d => { if (d.problemCategory && d.problemCategory !== '—') catCount.set(d.problemCategory, (
+                    catCount.get(d.problemCategory) || 0) + 1); });
+            let topCat = '—',
+                topN = 0;
+            for (let [c, n] of catCount)
+                if (n > topN) { topN = n;
+                    topCat = c; }
+            const critical = filteredData.filter(d => d.severity === 'High' || d.severity === 'Urgent').length;
+            document.getElementById('total-rfr').innerText = total;
+            const uniqueRfr = new Set(filteredData.map(d => d.rfrCode).filter(v => v && v !== '—')).size;
+            document.getElementById('total-wo').innerText = uniqueRfr;
+            document.getElementById('unique-trucks').innerText = uniqueTrucks;
+            document.getElementById('top-category').innerText = `${topCat} (${topN})`;
+            document.getElementById('critical-count').innerText = critical;
+
+            const textColor = getChartTextColor(),
+                gridColor = getChartGridColor();
+            const labels = Array.from(catCount.keys()).slice(0, 8);
+            const values = labels.map(l => catCount.get(l));
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(document.getElementById('categoryChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Requests', data: values, backgroundColor: '#3b9b6e',
+                        borderRadius: 8 }] },
+                options: { responsive: true, plugins: { legend: { labels: { color: textColor } } },
+                    scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor },
+                        grid: { color: gridColor } } } }
+            });
+            const sevMap = { High: 0, Urgent: 0, Normal: 0, Low: 0 };
+            filteredData.forEach(d => { if (d.severity && sevMap[d.severity] !== undefined) sevMap[d.severity]++;
+                else if (d.severity && d.severity !== '—') sevMap[d.severity] = (sevMap[d.severity] || 0) + 1; });
+            const sevLabels = Object.keys(sevMap).filter(k => sevMap[k] > 0);
+            const sevVals = sevLabels.map(k => sevMap[k]);
+            if (severityChart) severityChart.destroy();
+            severityChart = new Chart(document.getElementById('severityChart'), {
+                type: 'pie',
+                data: { labels: sevLabels,
+                    datasets: [{ data: sevVals, backgroundColor: ['#f97316', '#ef4444', '#3b82f6', '#84cc16'] }] },
+                options: { responsive: true, plugins: { legend: { labels: { color: textColor } } } }
+            });
+            const monthMap = new Map();
+            filteredData.forEach(d => { if (d.year && d.month) { let key =
+                    `${d.year}-${String(d.month).padStart(2,'0')}`;
+                    monthMap.set(key, (monthMap.get(key) || 0) + 1); } });
+            const sorted = Array.from(monthMap.keys()).sort();
+            const trendVals = sorted.map(k => monthMap.get(k));
+            if (trendChart) trendChart.destroy();
+            trendChart = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: { labels: sorted,
+                    datasets: [{ label: 'RFR Count', data: trendVals, borderColor: '#60a5fa', tension: 0.2,
+                        fill: false }] },
+                options: { responsive: true, plugins: { legend: { labels: { color: textColor } } },
+                    scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor },
+                        grid: { color: gridColor } } } }
+            });
+            updateAnalysisSummary();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const start = (currentPage - 1) * rowsPerPage;
+            const pageData = filteredData.slice(start, start + rowsPerPage);
+            if (pageData.length === 0 && filteredData.length > 0) {
+                currentPage = 1;
+                renderTable();
+                return;
+            }
+            pageData.forEach(d => {
+                let row = tbody.insertRow();
+                let dateStr = d.creationDateObj ? formatDateDDMMYYYY(d.creationDateObj) : '';
+                let sevClass = d.severity === 'High' ? 'severity-High' : (d.severity === 'Urgent' ?
+                    'severity-Urgent' : (d.severity === 'Normal' ? 'severity-Normal' : (d.severity === 'Low' ?
+                        'severity-Low' : '')));
+                row.insertCell(0).innerText = d.rfrCode;
+                row.insertCell(1).innerText = dateStr;
+                row.insertCell(2).innerText = d.truckCode;
+                row.insertCell(3).innerText = d.problemCategory;
+                row.insertCell(4).innerHTML =
+                    `<span class="badge-severity ${sevClass}">${d.severity}</span>`;
+                row.insertCell(5).innerText = d.branch;
+                row.insertCell(6).innerText = d.maintenanceCenter;
+                row.insertCell(7).innerText = d.description;
+            });
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            const pagDiv = document.getElementById('pagination-controls');
+            pagDiv.innerHTML = '';
+            if (totalPages > 1) {
+                const prev = document.createElement('button');
+                prev.innerText = '◀ Prev';
+                prev.onclick = () => { if (currentPage > 1) { currentPage--;
+                        renderTable(); } };
+                const next = document.createElement('button');
+                next.innerText = 'Next ▶';
+                next.onclick = () => { if (currentPage < totalPages) { currentPage++;
+                        renderTable(); } };
+                const span = document.createElement('span');
+                span.style.margin = '0 12px';
+                span.innerText = `Page ${currentPage} of ${totalPages}`;
+                pagDiv.append(prev, span, next);
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-year').value = 'all';
+            document.getElementById('filter-month').value = 'all';
+            document.getElementById('filter-day').value = 'all';
+            document.getElementById('filter-truck').value = 'all';
+            document.getElementById('filter-branch').value = 'all';
+            document.getElementById('filter-maint-center').value = 'all';
+            document.getElementById('filter-category').value = 'all';
+            document.getElementById('filter-severity').value = 'all';
+            document.getElementById('filter-category-type').value = 'all';
+            applyFilters();
+        }
+
+        function toggleTheme() {
+            darkMode = !darkMode;
+            const body = document.body;
+            const btn = document.getElementById('theme-toggle');
+            if (darkMode) {
+                body.classList.remove('light-theme');
+                btn.innerHTML = '<i class="fas fa-moon"></i> Dark';
+            } else {
+                body.classList.add('light-theme');
+                btn.innerHTML = '<i class="fas fa-sun"></i> Light';
+            }
+            updateChartsAndInsights();
+        }
+
+        // Manual file upload (backup)
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const processed = processSheetData(firstSheet);
+                if (processed.length === 0) {
+                    alert('No valid records with proper "Date" column found.');
+                    return;
+                }
+                rawData = processed;
+                populateFilters();
+                applyFilters();
+                document.getElementById('filter-panel').style.display = 'flex';
+                document.getElementById('insights-area').style.display = 'grid';
+                document.getElementById('chart-area').style.display = 'flex';
+                document.getElementById('table-wrapper').style.display = 'block';
+                document.getElementById('data-status').innerHTML =
+                    `<i class="fas fa-check-circle"></i> Loaded ${rawData.length} records `;
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        ['filter-year', 'filter-month', 'filter-day', 'filter-truck', 'filter-branch', 'filter-maint-center',
+            'filter-category', 'filter-severity', 'filter-category-type'
+        ].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+        document.getElementById('reset-filters').addEventListener('click', resetFilters);
+        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+        // Excel export
+        function exportToExcel() {
+            if (!filteredData || filteredData.length === 0) {
+                alert('No data to export. Please load data and apply filters first.');
+                return;
+            }
+
+            const exportData = filteredData.map(d => ({
+                'RFR Code': d.rfrCode || '—',
+                'Creation Date': d.creationDateObj ? formatDateDDMMYYYY(d.creationDateObj) : '',
+                'Year': d.year || '',
+                'Month': d.month || '',
+                'Day': d.day || '',
+                'Truck Code': d.truckCode || '—',
+                'Problem Category': d.problemCategory || '—',
+                'Category Type': d.categoryType || '—',
+                'Severity': d.severity || '—',
+                'Branch/Vendor': d.branch || '—',
+                'Maintenance Center': d.maintenanceCenter || '—',
+                'Description': d.description || '—'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const colWidths = [
+                { wch: 12 }, { wch: 14 }, { wch: 6 }, { wch: 6 }, { wch: 5 },
+                { wch: 14 }, { wch: 20 }, { wch: 18 }, { wch: 10 },
+                { wch: 20 }, { wch: 20 }, { wch: 40 }
+            ];
+            worksheet['!cols'] = colWidths;
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Fleet Data');
+
+            const now = new Date();
+            const dateStr =
+                `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            XLSX.writeFile(workbook, `Fleet_Analytics_Export_${dateStr}.xlsx`);
+        }
+
+        document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+
+        // ==================== DATA LOADING LOGIC ====================
+        async function loadFromGoogleSheetsAPI() {
+            const range = 'A:Z'; // adjust if your sheet is wider
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?key=${API_KEY}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Sheets API error: ${response.status}`);
+            const data = await response.json();
+            if (!data.values || data.values.length < 2) throw new Error('No data returned');
+            return data.values; // 2D array
+        }
+
+        async function initDataLoad() {
+            const statusEl = document.getElementById('data-status');
+            statusEl.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Fetching latest data...';
+
+            try {
+                const values = await loadFromGoogleSheetsAPI();
+                const worksheet = XLSX.utils.aoa_to_sheet(values);
+                const processed = processSheetData(worksheet);
+                if (processed.length === 0) throw new Error('Empty dataset');
+                rawData = processed;
+                finishLoad(`Loaded ${rawData.length} records (live) ✅`);
+            } catch (err) {
+                console.error('Data load failed:', err);
+                statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Could not load data automatically.<br>Please upload the file manually.';
+            }
+        }
+
+        function finishLoad(msg) {
+            document.getElementById('data-status').innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`;
+            populateFilters();
+            applyFilters();
+            document.getElementById('filter-panel').style.display = 'flex';
+            document.getElementById('insights-area').style.display = 'grid';
+            document.getElementById('chart-area').style.display = 'flex';
+            document.getElementById('table-wrapper').style.display = 'block';
+        }
+
+        // Start
+        initDataLoad();
+    </script>
+</body>
+</html>
